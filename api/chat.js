@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   try {
     const { message } = req.body || {};
 
-    if (!message) {
+    if (!message || !message.trim()) {
       return res.status(400).json({
         error: "Bạn chưa nhập tin nhắn"
       });
@@ -22,27 +22,32 @@ export default async function handler(req, res) {
       });
     }
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-        encodeURIComponent(apiKey),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: message
-                }
-              ]
-            }
-          ]
-        })
-      }
-    );
+    const model = "gemini-3.6-flash";
+
+    const url =
+      "https://generativelanguage.googleapis.com/v1beta/models/" +
+      model +
+      ":generateContent?key=" +
+      encodeURIComponent(apiKey);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: message
+              }
+            ]
+          }
+        ]
+      })
+    });
 
     const data = await response.json();
 
@@ -50,16 +55,18 @@ export default async function handler(req, res) {
       return res.status(response.status).json({
         error:
           data?.error?.message ||
-          `Gemini API lỗi ${response.status}`
+          "Gemini API trả về lỗi " + response.status
       });
     }
 
     const reply =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Gemini không trả về nội dung.";
+      data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("") ||
+      "Gemini không trả về câu trả lời.";
 
     return res.status(200).json({
-      reply
+      reply: reply
     });
 
   } catch (error) {
