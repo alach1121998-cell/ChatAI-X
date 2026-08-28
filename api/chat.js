@@ -14,23 +14,32 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
       return res.status(500).json({
-        error: "Vercel chưa có OPENAI_API_KEY"
+        error: "Vercel chưa có GEMINI_API_KEY"
       });
     }
 
     const response = await fetch(
-      "https://api.openai.com/v1/responses",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+        encodeURIComponent(apiKey),
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "gpt-5-mini",
-          input: message
+          contents: [
+            {
+              parts: [
+                {
+                  text: message
+                }
+              ]
+            }
+          ]
         })
       }
     );
@@ -41,13 +50,16 @@ export default async function handler(req, res) {
       return res.status(response.status).json({
         error:
           data?.error?.message ||
-          data?.error ||
-          `OpenAI API lỗi ${response.status}`
+          `Gemini API lỗi ${response.status}`
       });
     }
 
+    const reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Gemini không trả về nội dung.";
+
     return res.status(200).json({
-      reply: data.output_text || "AI không trả về nội dung."
+      reply
     });
 
   } catch (error) {
